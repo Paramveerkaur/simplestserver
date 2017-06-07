@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <script src="js/jquery.min.js"></script>
+        <script>
+            function onload(){
+                Promise.resolve()
+                .then(function(){
+                  return $.post('posts');  
+                })
+                .then(function(posts){
+                    posts.forEach(function(post){
+                        $('#posts').append(
+                            '<img src="' + post.image + '"/>' +
+                            '<p>' + post.comment + '</p>'
+                        );
+                    });
+                })
+                .catch(function(err){
+                    console.log(err);
+                });
+            }
+        </script>
+    </head>
+    <body onload="onload();">
+        <div id="posts">
+            
+        </div>
+    </body>
+</html>
