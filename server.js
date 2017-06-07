@@ -37,6 +37,7 @@ post.save(function (err) {
 });
 
 router.use(express.static(path.resolve(__dirname, 'client')));
+router.use(express.bodyParser());
 
 router.get('/', function(req, res){
   console.log('client requests posts.html');
@@ -46,15 +47,21 @@ router.get('/', function(req, res){
 router.post('/posts', function(req, res){
   console.log('client requests posts list');
   
-  //Post.find({})
-  //.then(function(paths){
-  //  res.json(paths);
-  //})
+  Post.find({})
+  .then(function(paths){
+    res.json(paths);
+  })
   
-  res.json([
-    {image: 'img/test.jpg', comment: 'test message 1'},
-    {image: 'img/test.jpg', comment: 'test message 2'}
-  ]);
+  //res.json([
+  //  {image: 'img/test.jpg', comment: 'test message 1'},
+  //  {image: 'img/test.jpg', comment: 'test message 2'}
+  //]);
+});
+
+router.post('/incrLike', function(req, res){
+  console.log('increment like for ' + req.body.id);
+  
+  res.json({id: req.body.id, count: 1});  
 });
 
 server.listen(process.env.PORT || 3000, process.env.IP || '0.0.0.0', function(){

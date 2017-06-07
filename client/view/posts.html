@@ -3,16 +3,36 @@
     <head>
         <script src="js/jquery.min.js"></script>
         <script>
+            function likeClick(id){
+                Promise.resolve()
+                .then(function(){
+                    return $.post('incrLike', {id : id});
+                })
+                .then(function(like){
+                     $('#like' + like.id).html(like.count);
+                })
+                .catch(function(err){
+                    console.log(err);
+                });
+            }
+
             function onload(){
                 Promise.resolve()
                 .then(function(){
                   return $.post('posts');  
                 })
                 .then(function(posts){
+                    $('#posts').html('');
                     posts.forEach(function(post){
                         $('#posts').append(
+                            '<div data-postId="' + post._id + '">' +
                             '<img src="' + post.image + '"/>' +
-                            '<p>' + post.comment + '</p>'
+                            '<p>' + post.comment + '</p>' +
+                            '<p>Like Count: ' + 
+                            '<span id ="like' + post._id + '">' + post.likeCount + '</span>' + 
+                            '</p>' +
+                            '<button onclick="likeClick(\'' + post._id + '\');">Like</button>' +
+                            '</div>'
                         );
                     });
                 })
