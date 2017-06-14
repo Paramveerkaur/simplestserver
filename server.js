@@ -10,6 +10,9 @@ var express = require('express');
 var mongoose = require('mongoose');
 var Post = require('./models/Post.js');
 
+//version that stores like counts in memory
+//var likeCounts = {};
+
 //
 // ## SimpleServer `SimpleServer(obj)`
 //
@@ -23,7 +26,7 @@ var server = http.createServer(router);
 //use your own mongodb instance here
 mongoose.connect('mongodb://user8165:pswd8165@ds161021.mlab.com:61021/prog8165');
 
-//sample code that creates a Post object
+/*sample code that creates a Post object
 var post = new Post({ 
   image: './img/glyphicons-halflings-white.png',
   comment: 'cool glphicon',
@@ -38,6 +41,7 @@ post.save(function (err) {
     console.log('posted');
   }
 });
+*/
 
 //tell the router (ie. express) where to find static files
 router.use(express.static(path.resolve(__dirname, 'client')));
@@ -74,9 +78,30 @@ router.post('/incrLike', function(req, res){
   console.log('increment like for ' + req.body.id);
   //the client will send us the ID for the post for which we should increment the like
   //this will be in req.body.id
-  //so far, we are just going to respond with a count of 1
-  //we don't have to send back the ID, but it will make the client side code easier
-  res.json({id: req.body.id, count: 1});  
+  
+  //this version counts likes in memory only
+  //var count = likeCounts[req.body.id];
+  //if (count)
+  //  count++;
+  //else
+  //  count = 1;
+  //likeCounts[req.body.id] = count;
+
+  //go get the post record
+  Post.findById(req.body.id)
+  .then(function(post){
+    //increment the like count
+    post.likeCount++;
+    //save the record back to the database
+    return post.save(post);
+  })
+  .then(function(post){
+    //a successful save returns back the updated object
+    res.json({id: req.body.id, count: post.likeCount});  
+  })
+  .catch(function(err){
+    console.log(err);
+  })
 });
 
 //set up the HTTP server and start it running
@@ -84,3 +109,14 @@ server.listen(process.env.PORT || 3000, process.env.IP || '0.0.0.0', function(){
   var addr = server.address();
   console.log('Server listening at', addr.address + ':' + addr.port);
 });
+
+
+
+
+
+
+
+
+
+
+
