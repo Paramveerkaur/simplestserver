@@ -9,6 +9,7 @@ var path = require('path');
 var express = require('express');
 var mongoose = require('mongoose');
 var Post = require('./models/Post.js');
+const bodyParser = require('body-parser');
 
 //version that stores like counts in memory
 //var likeCounts = {};
@@ -21,6 +22,9 @@ var Post = require('./models/Post.js');
 //
 var router = express();
 var server = http.createServer(router);
+const passport = require('passport');
+const session = require('express-session');  
+const RedisStore = require('connect-redis')(session);
 
 //establish connection to our mongodb instance
 //use your own mongodb instance here
@@ -46,7 +50,19 @@ post.save(function (err) {
 //tell the router (ie. express) where to find static files
 router.use(express.static(path.resolve(__dirname, 'client')));
 //tell the router to parse JSON data for us and put it into req.body
-router.use(express.bodyParser());
+router.use(bodyParser.urlencoded({ extended: true }));
+router.use(bodyParser.json());
+
+//router.use(session({  
+//  store: new RedisStore({
+//    url: config.redisStore.url
+//  }),
+//secret: config.redisStore.secret,
+//resave: false,
+//saveUninitialized: false
+//);
+router.use(passport.initialize());
+router.use(passport.session());
 
 //tell the router how to handle a get request to the root 
 router.get('/', function(req, res){
