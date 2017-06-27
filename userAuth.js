@@ -1,0 +1,68 @@
+const User = require('./models/User.js');
+const LocalStrategy = require('passport-local').Strategy;
+const hash = require('./utils/hash.js');
+
+module.exports.init = function(passport){
+	// Passport needs to be able to serialize and deserialize users to support persistent login sessions
+    passport.serializeUser(function(user, callback) {
+        console.log('serializing user: ' + user.username);
+        callback(null, user._id);
+    });
+
+    passport.deserializeUser(function(id, callback) {
+        User.findById(id, function(err, user) {
+            console.log('deserializing user: ' + user.username);
+            callback(err, user);
+        });
+    });
+
+    //set up the login handler
+    passport.use('login', new LocalStrategy(handleLoginAttempt));
+    //set up the signup handler
+	passport.use('signup', new LocalStrategy(handleSignupAttempt));
+}
+
+module.exports.isAuthenticated = function (req, res, next) {
+    console.log('check if we have an authenticated user');
+	// if user is authenticated in the session 
+	if (req.isAuthenticated()){
+	    console.log('we do');
+        //allow them to proceed
+        next();
+    } else {
+	    console.log('we do not');
+        // if the user is not authenticated then redirect him to the login page
+        res.redirect('/signin');
+    }
+}
+
+//passport will call this function when someone attempts to log in
+function handleLoginAttempt(email, password, cb){
+    //don't log user's passwords in plain text to the console in production
+    console.log('userAuth: handleLoginAttempt: email: ' + email + ' password ' + password);
+    
+    Promise.Resolve()
+    .then(function(){
+        //see if there's a user with this email
+        return User.findOne({'email' : email});
+    })
+    .then(function(user){
+        var param = false;
+        //if the user exists and the hash of the password provided matches
+        if (user && hash.isValid(user, password))
+            //return the user object
+            param = user;
+        //execute the callback with appropriate parameters
+        cb(null, param);
+    })
+    .catch(function(err){
+        //even if something went wrong, we still need to call the callback
+        console.log('userAuth: handleLoginAttempt: exception: ' + err);
+        cb(err);
+    });
+}
+
+function handleSignupAttempt(username, password, cb){
+    
+}
+

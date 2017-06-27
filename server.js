@@ -1,15 +1,24 @@
-//
+  //
 // # SimplestServer
 //
 // by Rick Kozak
 
+const dbUrl = 'mongodb://user8165:pswd8165@ds161021.mlab.com:61021/prog8165';
+
 //require statements -- this adds external modules from node_modules or our own defined modules
-var http = require('http');
-var path = require('path');
-var express = require('express');
-var mongoose = require('mongoose');
-var Post = require('./models/Post.js');
+const http = require('http');
+const path = require('path');
+//express related
+const express = require('express');
 const bodyParser = require('body-parser');
+//session
+const session = require('express-session');  
+const mongoSession = require('connect-mongodb-session')(session);
+const passport = require('passport');
+const userAuth = require('./userAuth.js');
+//database
+const mongoose = require('mongoose');
+const Post = require('./models/Post.js');
 
 //version that stores like counts in memory
 //var likeCounts = {};
@@ -22,13 +31,15 @@ const bodyParser = require('body-parser');
 //
 var router = express();
 var server = http.createServer(router);
-const passport = require('passport');
-const session = require('express-session');  
-const RedisStore = require('connect-redis')(session);
 
 //establish connection to our mongodb instance
 //use your own mongodb instance here
-mongoose.connect('mongodb://user8165:pswd8165@ds161021.mlab.com:61021/prog8165');
+mongoose.connect(dbUrl);
+//create a sessions collection as well
+var mongoSessionStore = new mongoSession({
+    uri: dbUrl,
+    collection: 'sessions'
+});
 
 /*sample code that creates a Post object
 var post = new Post({ 
@@ -52,24 +63,35 @@ router.use(express.static(path.resolve(__dirname, 'client')));
 //tell the router to parse JSON data for us and put it into req.body
 router.use(bodyParser.urlencoded({ extended: true }));
 router.use(bodyParser.json());
-
-//router.use(session({  
-//  store: new RedisStore({
-//    url: config.redisStore.url
-//  }),
-//secret: config.redisStore.secret,
-//resave: false,
-//saveUninitialized: false
-//);
+//add session support
+router.use(session({secret: process.env.SESSION_SECRET || 'mySecretKey', store: mongoSessionStore}));
+//add passport for authentication support
 router.use(passport.initialize());
 router.use(passport.session());
+userAuth.init(passport);
 
 //tell the router how to handle a get request to the root 
 router.get('/', function(req, res){
+  console.log('client requests root');
+  //use sendfile to send our signin.html file
+  res.sendfile(path.join(__dirname, 'client/view','signin.html'));
+});
+
+router.get('/signin', function(req, res){
+  console.log('client requests signin');
+  res.redirect('/');
+});
+
+router.post('/signin', function(req, res){
+  console.log('client submits signin credentials');
+  res.json({isValid: true, message: 'No way'});
+});
+
+router.get('/posts', userAuth.isAuthenticated, function(req, res){
   console.log('client requests posts.html');
   //use sendfile to send our posts.html file
   res.sendfile(path.join(__dirname, 'client/view','posts.html'));
-});
+})
 
 //tell the router how to handle a post request to /posts
 router.post('/posts', function(req, res){
