@@ -9,30 +9,32 @@
         <!-- I am including this script directly in the HTML, but usually this would be in its own file  -->
         <script>
             /*global $*/
-            function handleSigninAttempt(){
+            function handleJoinAttempt(){
                 var email = $('#email').val();
                 var password = $('#password').val();
+                var repeatPassword = $('#repeat_password').val();
                 
-                if (email.length > 0 && password.length > 0){
+                if (email.length > 0 && password.length > 0 && repeatPassword.length > 0 && password == repeatPassword){
                     Promise.resolve()
                     .then(function(){
-                        return $.post('signin', 'username=' + email + '&password=' + password);
+                        return $.post('join', 'username=' + email + '&password=' + password);
                     })
                     .then(function(auth){
                         if (auth.isValid){
                             $('#error').text = '';
-                            window.location.replace('posts');
+                            window.location.replace('signin');
                         } else {
                             $('#error').html(auth.message);
                             $('#email').html('');
                             $('#password').html('');
+                            $('#repeat_password').html('');
                         }
                     })
                     .catch(function(err){
                         console.log(err);
                     })
                 } else {
-                    $('#error').html('Please provide both username and password');
+                    $('#error').html('Please provide both username and password and ensure passwords match');
                 }
             }
 
@@ -54,11 +56,13 @@
 				</div>
 
                 <div class="form-group">
-                    <button class="btn btn-lg btn-primary" onclick="handleSigninAttempt()">Sign in</button>
+                    <input type="password" id="repeat_password" class="form-control" placeholder="Repeat Password" required/>
+				</div>
+
+                <div class="form-group">
+                    <button class="btn btn-lg btn-primary" onclick="handleJoinAttempt()">Join</button>
 				</div>
                 
-                <a href="/join" class="text-center">Create an account</a></br>
-                <a href="/new_password" class="text-center">I forgot my password</a>
                 <p id="error"></p>
             </div>
         </div>

@@ -20,9 +20,6 @@ const userAuth = require('./userAuth.js');
 const mongoose = require('mongoose');
 const Post = require('./models/Post.js');
 
-//version that stores like counts in memory
-//var likeCounts = {};
-
 //
 // ## SimpleServer `SimpleServer(obj)`
 //
@@ -41,30 +38,18 @@ var mongoSessionStore = new mongoSession({
     collection: 'sessions'
 });
 
-/*sample code that creates a Post object
-var post = new Post({ 
-  image: './img/glyphicons-halflings-white.png',
-  comment: 'cool glphicon',
-  likeCount: 0,
-  feedbackCount: 0
-});
-//and then saves it to the mongodb instance we connected to above
-post.save(function (err) {
-  if (err) {
-    console.log(err);
-  } else {
-    console.log('posted');
-  }
-});
-*/
-
 //tell the router (ie. express) where to find static files
 router.use(express.static(path.resolve(__dirname, 'client')));
 //tell the router to parse JSON data for us and put it into req.body
 router.use(bodyParser.urlencoded({ extended: true }));
 router.use(bodyParser.json());
 //add session support
-router.use(session({secret: process.env.SESSION_SECRET || 'mySecretKey', store: mongoSessionStore}));
+router.use(session({
+  secret: process.env.SESSION_SECRET || 'mySecretKey', 
+  store: mongoSessionStore,
+  resave: true,
+  saveUninitialized: false
+}));
 //add passport for authentication support
 router.use(passport.initialize());
 router.use(passport.session());
@@ -74,27 +59,72 @@ userAuth.init(passport);
 router.get('/', function(req, res){
   console.log('client requests root');
   //use sendfile to send our signin.html file
-  res.sendfile(path.join(__dirname, 'client/view','signin.html'));
+  res.sendFile(path.join(__dirname, 'client/view','signin.html'));
 });
 
+//tell the router how to handle a get request to the signin page
 router.get('/signin', function(req, res){
   console.log('client requests signin');
   res.redirect('/');
 });
 
-router.post('/signin', function(req, res){
-  console.log('client submits signin credentials');
-  res.json({isValid: true, message: 'No way'});
+//tell the router how to handle a post request from the signin page
+router.post('/signin', function(req, res, next) {
+  //tell passport to attempt to authenticate the login
+  passport.authenticate('login', function(err, user, info) {
+    //callback returns here
+    if (err){
+      //if error, say error
+      res.json({isValid: false, message: 'internal error'});
+    } else if (!user) {
+      //if no user, say invalid login
+      res.json({isValid: false, message: 'try again'});
+    } else {
+      //log this user in
+      req.logIn(user, function(err){
+        if (!err)
+          //send a message to the client to say so
+          res.json({isValid: true, message: 'welcome ' + user.email});
+      });
+    }
+  })(req, res, next);
 });
 
+//tell the router how to handle a get request to the join page
+router.get('/join', function(req, res){
+  console.log('client requests join');
+  res.sendFile(path.join(__dirname, 'client/view', 'join.html'));
+});
+
+//tell the router how to handle a post request to the join page
+router.post('/join', function(req, res, next) {
+  passport.authenticate('signup', function(err, user, info) {
+    if (err){
+      res.json({isValid: false, message: 'internal error'});    
+    } else if (!user) {
+      res.json({isValid: false, message: 'try again'});
+    } else {
+      //log this user in since they've just joined
+      req.logIn(user, function(err){
+        if (!err)
+          //send a message to the client to say so
+          res.json({isValid: true, message: 'welcome ' + user.email});
+      });
+    }
+  })(req, res, next);
+});
+
+//tell the router how to handle a get request to the posts page
+//only do this if this is an authenticated user
 router.get('/posts', userAuth.isAuthenticated, function(req, res){
   console.log('client requests posts.html');
   //use sendfile to send our posts.html file
-  res.sendfile(path.join(__dirname, 'client/view','posts.html'));
+  res.sendFile(path.join(__dirname, 'client/view','posts.html'));
 })
 
 //tell the router how to handle a post request to /posts
-router.post('/posts', function(req, res){
+//only do this if this is an authenticated user
+router.post('/posts', userAuth.isAuthenticated, function(req, res){
   console.log('client requests posts list');
   
   //go find all the posts in the database
@@ -103,27 +133,11 @@ router.post('/posts', function(req, res){
     //send them to the client in JSON format
     res.json(paths);
   })
-  
-  //this code just creates some posts directly without going to the database
-  //res.json([
-  //  {image: 'img/test.jpg', comment: 'test message 1'},
-  //  {image: 'img/test.jpg', comment: 'test message 2'}
-  //]);
 });
 
 //tell the router how to handle a post request to /incrLike
 router.post('/incrLike', function(req, res){
   console.log('increment like for ' + req.body.id);
-  //the client will send us the ID for the post for which we should increment the like
-  //this will be in req.body.id
-  
-  //this version counts likes in memory only
-  //var count = likeCounts[req.body.id];
-  //if (count)
-  //  count++;
-  //else
-  //  count = 1;
-  //likeCounts[req.body.id] = count;
 
   //go get the post record
   Post.findById(req.body.id)
