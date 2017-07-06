@@ -75,7 +75,6 @@ function handleSignupAttempt(email, password, cb){
         return User.findOne({'email' : email});
     })
     .then(function(user){
-        var param = false;
         //if the user does not exist
         if (!user){
             //we can safely create one
@@ -88,11 +87,12 @@ function handleSignupAttempt(email, password, cb){
                 return user.save();
             })
             .then(function(user){
-                param = user;
+                //execute the callback with appropriate parameters
+                cb(null, user);
             })
+        } else {
+            cb(null, false);
         }
-        //execute the callback with appropriate parameters
-        cb(null, param);
     })
     .catch(function(err){
         //even if something went wrong, we still need to call the callback

@@ -16,9 +16,16 @@ const session = require('express-session');
 const mongoSession = require('connect-mongodb-session')(session);
 const passport = require('passport');
 const userAuth = require('./userAuth.js');
+const hash = require('./utils/hash.js');
 //database
 const mongoose = require('mongoose');
 const Post = require('./models/Post.js');
+const User = require('./models/User.js');
+const PasswordReset = require('./models/PasswordReset.js'); 
+//sendmail
+const email = require('./utils/sendmail.js');
+
+//email.send('prog8165@gmail.com', 'test', 'this is a test');
 
 //
 // ## SimpleServer `SimpleServer(obj)`
@@ -114,6 +121,57 @@ router.post('/join', function(req, res, next) {
   })(req, res, next);
 });
 
+router.get('/passwordreset', (req, res) => {
+  console.log('client requests passwordreset');
+  res.sendFile(path.join(__dirname, 'client/view', 'passwordreset.html'));
+});
+
+router.post('/passwordreset', (req, res) => {
+    Promise.resolve()
+    .then(function(){
+        //see if there's a user with this email
+        return User.findOne({'email' : req.body.email});
+    })
+    .then(function(user){
+      if (user){
+        var pr = new PasswordReset();
+        pr.userId = user.id;
+        pr.password = hash.createHash(req.body.password);
+        pr.expires = new Date((new Date()).getTime() + (20 * 60 * 1000));
+        pr.save()
+        .then(function(pr){
+          if (pr){
+            email.send(req.body.email, 'password reset', 'https://prog8165-rtbsoft.c9users.io/verifypassword?id=' + pr.id);
+          }
+        });
+      }
+    })
+});
+
+router.get('/verifypassword', function(req, res){
+    var password;
+    
+    Promise.resolve()
+    .then(function(){
+      return PasswordReset.findOne({id: req.body.id});
+    })
+    .then(function(pr){
+      if (pr){
+        if (pr.expires > new Date()){
+          password = pr.password;
+          //see if there's a user with this email
+          return User.findOne({id : pr.userId});
+        }
+      }
+    })
+    .then(function(user){
+      if (user){
+        user.password = password;
+        return user.save();
+      }
+    })
+});
+
 //tell the router how to handle a get request to the posts page
 //only do this if this is an authenticated user
 router.get('/posts', userAuth.isAuthenticated, function(req, res){
@@ -136,7 +194,7 @@ router.post('/posts', userAuth.isAuthenticated, function(req, res){
 });
 
 //tell the router how to handle a post request to /incrLike
-router.post('/incrLike', function(req, res){
+router.post('/incrLike', userAuth.isAuthenticated, function(req, res){
   console.log('increment like for ' + req.body.id);
 
   //go get the post record
