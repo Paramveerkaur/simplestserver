@@ -21,6 +21,7 @@ const hash = require('./utils/hash.js');
 const mongoose = require('mongoose');
 const Post = require('./models/Post.js');
 const User = require('./models/User.js');
+const Like = require('./models/Like.js');
 const PasswordReset = require('./models/PasswordReset.js'); 
 //sendmail
 const email = require('./utils/sendmail.js');
@@ -185,29 +186,57 @@ router.get('/posts', userAuth.isAuthenticated, function(req, res){
 router.post('/posts', userAuth.isAuthenticated, function(req, res){
   console.log('client requests posts list');
   
+  var thesePosts;
   //go find all the posts in the database
   Post.find({})
-  .then(function(paths){
+  .then(function(posts){
+    thesePosts = posts;
+    var promises = [];
+    thesePosts.forEach(function(post){
+      promises.push(
+        Promise.resolve()
+        .then(function(){
+          return Like.findOne({userId: req.user.id, postId: post.id})
+        })
+        .then(function(like){
+          post._doc.isLiked = like ? true : false;
+      }));
+    });
+    return Promise.all(promises);
+  })
+  .then(function(){
     //send them to the client in JSON format
-    res.json(paths);
+    res.json(thesePosts);
   })
 });
 
 //tell the router how to handle a post request to /incrLike
 router.post('/incrLike', userAuth.isAuthenticated, function(req, res){
-  console.log('increment like for ' + req.body.id);
+  console.log('increment like for ' + req.body.id + ' by user ' + req.user.email);
 
-  //go get the post record
-  Post.findById(req.body.id)
-  .then(function(post){
-    //increment the like count
-    post.likeCount++;
-    //save the record back to the database
-    return post.save(post);
-  })
-  .then(function(post){
-    //a successful save returns back the updated object
-    res.json({id: req.body.id, count: post.likeCount});  
+  Like.findOne({userId: req.user.id, postId: req.body.id})
+  .then(function(like){
+    if (!like){
+      //go get the post record
+      Post.findById(req.body.id)
+      .then(function(post){
+        //increment the like count
+        post.likeCount++;
+        //save the record back to the database
+        return post.save(post);
+      })
+      .then(function(post){
+        var like = new Like();
+        like.userId = req.user.id;
+        like.postId = req.body.id;
+        like.save();
+        
+        //a successful save returns back the updated object
+        res.json({id: req.body.id, count: post.likeCount});  
+      })
+    } else {
+        res.json({id: req.body.id, count: -1});  
+    }
   })
   .catch(function(err){
     console.log(err);

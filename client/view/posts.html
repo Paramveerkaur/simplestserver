@@ -5,6 +5,7 @@
         <script src="js/jquery.min.js"></script>
         <!-- I am including this script directly in the HTML, but usually this would be in its own file  -->
         <script>
+            /*global $*/
             //handle a click on the LIKE button we've included with each post
             //we receive the ID of the post as a parameter
             function likeClick(id){
@@ -16,8 +17,9 @@
                     return $.post('incrLike', {id : id});
                 })
                 .then(function(like){
-                    //jQuery provides a nice convenience methot for easily setting the count to the value returned
-                    $('#like' + like.id).html(like.count);
+                    if (like.count > 0)
+                        //jQuery provides a nice convenience methot for easily setting the count to the value returned
+                        $('#like' + like.id).html(like.count);
                 })
                 .catch(function(err){
                     //always include a catch for the promise chain
@@ -64,6 +66,10 @@
                     $('#posts').html('');
                     //loop over each post item in the posts array
                     posts.forEach(function(post){
+                        var likeString = '';
+                        if (post.isLiked)
+                            likeString = 'I liked this';
+
                         //jQuery function to append to the innterHTML of the div with id = 'posts'
                         $('#posts').append(
                             //remember the id in a data- element (we can define as many of our own as needed)
@@ -77,6 +83,7 @@
                             //use a span with an id so the javascript can find this easily later
                             '<span id ="like' + post._id + '">' + post.likeCount + '</span>' + 
                             '</p>' +
+                            '<p id="ilikethis">' + likeString + '</p>' +
                             //set up the click event to call likeClick() with the id of this item as a parameter
                             '<button onclick="likeClick(\'' + post._id + '\');">Like</button>' +
                             '</div>'
